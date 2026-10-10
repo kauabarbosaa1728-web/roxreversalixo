@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reversa • KBSISTEMAS</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font: 16px system-ui;
+      background: #f1f5f9;
+      color: #172337;
+    }
+
+    header {
+      background: #102d40;
+      color: white;
+      padding: 22px max(20px, calc((100vw - 1200px)/2));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    header a { color: white; }
+
+    main {
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    a {
+      color: #087d72;
+      text-decoration: none;
+    }
+
+    h1 { font-size: 28px; }
+    h2 { font-size: 20px; }
+
+    .panel, .card {
+      background: white;
+      border: 1px solid #dbe4e9;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 12px;
+    }
+
+    .card strong {
+      display: block;
+      font-size: 30px;
+      margin-top: 8px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 7px;
+    }
+
+    input, select, textarea {
+      font: inherit;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #bac8d1;
+      border-radius: 8px;
+    }
+
+    textarea { min-height: 95px; }
+
+    button, .button {
+      font: inherit;
+      display: inline-block;
+      background: #087d72;
+      border: 0;
+      border-radius: 8px;
+      color: white;
+      padding: 12px 18px;
+      cursor: pointer;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 18px 0;
+    }
+
+    .message {
+      background: #fff4cd;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .table { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    td, th {
+      text-align: left;
+      padding: 13px 10px;
+      border-bottom: 1px solid #e1e8ed;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      font-size: 13px;
+      color: #546878;
+    }
+
+    .badge {
+      background: #e3f3ed;
+      padding: 5px 9px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .muted {
+      color: #5a6b7d;
+      font-size: 14px;
+    }
+
+    .event {
+      border-left: 3px solid #087d72;
+      padding: 0 16px;
+      margin: 22px 0;
+      white-space: pre-wrap;
+    }
+
+    .login {
+      max-width: 430px;
+      margin: 55px auto;
+    }
+
+    p { overflow-wrap: anywhere; }
+
+    .filters {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filters input {
+      flex: 2;
+      min-width: 180px;
+    }
+
+    .filters select {
+      flex: 1;
+      min-width: 160px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div>
+      <b>↻ REVERSA</b>
+      <div style="font-size:13px">
+        Roteadores e lixo eletrônico · KBSISTEMAS
+      </div>
+    </div>
+
+    {% if session.user_id %}
+    <form method="post" action="{{ url_for('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <span>{{ session.username }}</span>
+      <button>Sair</button>
+    </form>
+    {% endif %}
+  </header>
+
+  <main>
+    {% for message in get_flashed_messages() %}
+      <div class="message">{{ message }}</div>
+    {% endfor %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
