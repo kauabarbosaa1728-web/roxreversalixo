@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<a href="{{ url_for('index') }}">← Voltar</a>
+<h1>Cadastrar roteador</h1>
+
+<div class="panel">
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+
+    <div class="grid">
+      {% for key, label in [
+        ('brand','Marca'),
+        ('model','Modelo'),
+        ('serial','Serial'),
+        ('mac','MAC'),
+        ('origin','Cliente / origem')
+      ] %}
+        <div>
+          <label>
+            {{ label }}
+            {% if key in ['brand','model'] %} *{% endif %}
+          </label>
+
+          <input
+            name="{{ key }}"
+            value="{{ request.form.get(key,'') }}"
+            {% if key in ['brand','model'] %}
+              required maxlength="200"
+            {% endif %}
+          >
+        </div>
+      {% endfor %}
+    </div>
+
+    <p class="muted">
+      Serial e MAC são opcionais. Aceitam letras, números e símbolos,
+      sem formato obrigatório. Cada cadastro representa um roteador.
+    </p>
+
+    <label>Observações / acessórios recebidos</label>
+    <textarea name="notes">{{ request.form.get('notes','') }}</textarea>
+
+    <div class="actions">
+      <button>Salvar entrada</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
