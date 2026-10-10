@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<a href="{{ url_for('index') }}">← Voltar</a>
+
+<h1>#{{ item.id }} · {{ item.brand }} {{ item.model }}</h1>
+
+<div class="panel">
+  <span class="badge">{{ item.status }}</span>
+
+  <div class="grid">
+    <p>
+      <b>Serial:</b> {{ item.serial or 'Não informado' }}
+    </p>
+    <p>
+      <b>MAC:</b> {{ item.mac or 'Não informado' }}
+    </p>
+    <p>
+      <b>Origem:</b> {{ item.origin or 'Não informada' }}
+    </p>
+    <p>
+      <b>Entrada (UTC):</b>
+      {{ item.created.strftime('%d/%m/%Y %H:%M') }}
+    </p>
+  </div>
+
+  <p><b>Observações:</b> {{ item.notes or '—' }}</p>
+</div>
+
+<div class="panel">
+  <h2>Registrar teste ou movimentação</h2>
+
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="version" value="{{ item.version }}">
+
+    <div class="grid">
+      <div>
+        <label>Nova situação</label>
+
+        <select name="status">
+          {% for status in statuses %}
+            <option
+              {% if item.status == status %}selected{% endif %}
+            >{{ status }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label>Destino (obrigatório na saída)</label>
+        <input
+          name="destination"
+          placeholder="Ex.: estoque ou empresa de reciclagem"
+        >
+      </div>
+    </div>
+
+    <br>
+
+    <label>Resultado do teste / defeito / motivo *</label>
+    <textarea
+      name="detail"
+      required
+      placeholder="Ex.: liga, Wi-Fi e portas testados; aprovado."
+    ></textarea>
+
+    <div class="actions">
+      <button>Registrar</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Histórico</h2>
+
+  {% for event in events %}
+    <div class="event">
+      <b>{{ event.status }}</b>
+      · {{ event.created.strftime('%d/%m/%Y %H:%M') }} UTC
+      · {{ event.actor }}
+
+      <p>{{ event.detail }}</p>
+
+      {% if event.destination %}
+        <p>Destino: {{ event.destination }}</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
