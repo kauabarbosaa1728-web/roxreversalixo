@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Controle de reversa</h1>
+<p class="muted">Da devolução ao teste e ao destino final.</p>
+
+<div class="cards">
+  {% for status in statuses %}
+    <a class="card" href="{{ url_for('index', status=status) }}">
+      {{ status }}
+      <strong>{{ counts.get(status, 0) }}</strong>
+    </a>
+  {% endfor %}
+</div>
+
+<div class="actions">
+  <a class="button" href="{{ url_for('new') }}">
+    + Cadastrar roteador
+  </a>
+
+  <a href="{{ url_for('export', q=request.args.get('q',''), status=request.args.get('status','')) }}">
+    Exportar lista CSV
+  </a>
+
+  <a href="{{ url_for('history_export') }}">
+    Exportar histórico CSV
+  </a>
+</div>
+
+<div class="panel">
+  <form class="filters">
+    <input
+      name="q"
+      placeholder="Buscar marca, modelo, serial, MAC ou origem"
+      value="{{ request.args.get('q','') }}"
+    >
+
+    <select name="status">
+      <option value="">Todas as situações</option>
+
+      {% for status in statuses %}
+        <option
+          {% if request.args.get('status') == status %}selected{% endif %}
+        >{{ status }}</option>
+      {% endfor %}
+    </select>
+
+    <button>Buscar</button>
+    <a href="{{ url_for('index') }}">Limpar</a>
+  </form>
+
+  <div class="table">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Marca / modelo</th>
+          <th>Serial</th>
+          <th>MAC</th>
+          <th>Situação</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for item in records.items %}
+          <tr>
+            <td>#{{ item.id }}</td>
+            <td>
+              {{ item.brand }}<br>
+              <b>{{ item.model }}</b>
+            </td>
+            <td>{{ item.serial or '—' }}</td>
+            <td>{{ item.mac or '—' }}</td>
+            <td>
+              <span class="badge">{{ item.status }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('detail', item_id=item.id) }}">
+                Abrir
+              </a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6">Nenhum roteador encontrado.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="actions">
+    {{ records.total }} equipamento(s) · Página {{ records.page }}
+
+    {% if records.has_prev %}
+      <a href="{{ url_for('index', page=records.prev_num, q=request.args.get('q',''), status=request.args.get('status','')) }}">
+        Anterior
+      </a>
+    {% endif %}
+
+    {% if records.has_next %}
+      <a href="{{ url_for('index', page=records.next_num, q=request.args.get('q',''), status=request.args.get('status','')) }}">
+        Próxima
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
