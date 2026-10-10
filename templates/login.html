@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="panel login">
+  <h1>Entrar no sistema</h1>
+
+  <p class="muted">
+    Use o usuário e a senha definidos na configuração.
+  </p>
+
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+
+    <label>Usuário</label>
+    <input name="username" autocomplete="username" required>
+
+    <br><br>
+
+    <label>Senha</label>
+    <input
+      type="password"
+      name="password"
+      autocomplete="current-password"
+      required
+    >
+
+    <div class="actions">
+      <button>Entrar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
