@@ -1,31 +1,96 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+  body {
+    min-height: 100vh;
+    background-color: #071f32;
+    background-image:
+      linear-gradient(
+        rgba(4, 20, 34, 0.15),
+        rgba(4, 20, 34, 0.30)
+      ),
+      url("{{ url_for('login_background') }}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  header {
+    background: rgba(10, 35, 51, 0.90);
+  }
+
+  .panel.login {
+    max-width: 430px;
+    margin: 55px auto;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 16px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.30);
+  }
+
+  .login h1 {
+    margin-top: 0;
+  }
+
+  .login input {
+    background: #f8fafc;
+  }
+
+  .login input:focus {
+    outline: 2px solid #087d72;
+    outline-offset: 2px;
+  }
+
+  .login button {
+    width: 100%;
+    font-weight: 600;
+  }
+
+  @media (max-width: 600px) {
+    .panel.login {
+      margin: 35px auto;
+      padding: 24px;
+    }
+  }
+</style>
+
 <div class="panel login">
   <h1>Entrar no sistema</h1>
 
   <p class="muted">
-    Use o usuário e a senha definidos na configuração.
+    Controle de reversa e lixo eletrônico.
+    Entre com seu usuário e senha.
   </p>
 
   <form method="post">
     <input type="hidden" name="csrf" value="{{ csrf }}">
 
-    <label>Usuário</label>
-    <input name="username" autocomplete="username" required>
+    <label for="username">Usuário</label>
+    <input
+      id="username"
+      name="username"
+      autocomplete="username"
+      placeholder="Digite seu usuário"
+      required
+    >
 
     <br><br>
 
-    <label>Senha</label>
+    <label for="password">Senha</label>
     <input
+      id="password"
       type="password"
       name="password"
       autocomplete="current-password"
+      placeholder="Digite sua senha"
       required
     >
 
     <div class="actions">
-      <button>Entrar</button>
+      <button type="submit">Entrar</button>
     </div>
   </form>
 </div>
