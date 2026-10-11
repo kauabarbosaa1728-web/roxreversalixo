@@ -6,18 +6,12 @@ from datetime import datetime, timezone, timedelta
 from functools import wraps
 
 from flask import (
-    Flask,
-    abort,
-    flash,
-    redirect,
-    render_template,
-    request,
-    session,
-    url_for,
-    Response,
+    Flask, abort, flash, redirect, render_template,
+    request, session, url_for, Response, g
 )
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_
+from sqlalchemy import or_, inspect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import StaleDataError
 from werkzeug.security import (
     generate_password_hash,
@@ -37,18 +31,14 @@ if production and (not secret or not database):
 
 if database and database.startswith("postgres://"):
     database = database.replace(
-        "postgres://",
-        "postgresql://",
-        1,
+        "postgres://", "postgresql://", 1
     )
 
 app.config.update(
     SECRET_KEY=secret or secrets.token_hex(32),
     SQLALCHEMY_DATABASE_URI=database or "sqlite:///reversa.db",
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    SQLALCHEMY_ENGINE_OPTIONS={
-        "pool_pre_ping": True,
-    },
+    SQLALCHEMY_ENGINE_OPTIONS={"pool_pre_ping": True},
     SESSION_COOKIE_NAME="reversa_session",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -72,100 +62,62 @@ STATUSES = [
 class User(db.Model):
     __tablename__ = "reversa_users"
 
-    id = db.Column(
-        db.Integer,
-        primary_key=True,
-    )
+    id = db.Column(db.Integer, primary_key=True)
     username = db.Column(
-        db.String(80),
-        unique=True,
-        nullable=False,
+        db.String(80), unique=True, nullable=False
     )
-    password = db.Column(
-        db.Text,
+    password = db.Column(db.Text, nullable=False)
+    role = db.Column(
+        db.String(20),
         nullable=False,
+        default="funcionario",
+        server_default="funcionario",
     )
 
 
 class Equipment(db.Model):
     __tablename__ = "reversa_equipment"
 
-    id = db.Column(
-        db.Integer,
-        primary_key=True,
-    )
-    brand = db.Column(
-        db.String(200),
-        nullable=False,
-    )
-    model = db.Column(
-        db.String(200),
-        nullable=False,
-    )
-    serial = db.Column(
-        db.Text,
-        default="",
-    )
-    mac = db.Column(
-        db.Text,
-        default="",
-    )
-    origin = db.Column(
-        db.Text,
-        default="",
-    )
-    notes = db.Column(
-        db.Text,
-        default="",
-    )
+    id = db.Column(db.Integer, primary_key=True)
+    brand = db.Column(db.String(200), nullable=False)
+    model = db.Column(db.String(200), nullable=False)
+    serial = db.Column(db.Text, default="")
+    mac = db.Column(db.Text, default="")
+    origin = db.Column(db.Text, default="")
+    notes = db.Column(db.Text, default="")
     status = db.Column(
-        db.String(40),
-        default="Recebido",
-        nullable=False,
+        db.String(40), default="Recebido", nullable=False
     )
     created = db.Column(
         db.DateTime,
         default=lambda: datetime.now(timezone.utc),
     )
     version = db.Column(
-        db.Integer,
+        db.Integer, nullable=False, default=1
+    )
+    deleted = db.Column(
+        db.Boolean,
         nullable=False,
-        default=1,
+        default=False,
+        server_default=db.false(),
     )
 
-    __mapper_args__ = {
-        "version_id_col": version,
-    }
+    __mapper_args__ = {"version_id_col": version}
 
 
 class Event(db.Model):
     __tablename__ = "reversa_events"
 
-    id = db.Column(
-        db.Integer,
-        primary_key=True,
-    )
+    id = db.Column(db.Integer, primary_key=True)
     equipment_id = db.Column(
         db.Integer,
         db.ForeignKey("reversa_equipment.id"),
         nullable=False,
     )
-    actor = db.Column(
-        db.String(80),
-        nullable=False,
-    )
-    status = db.Column(
-        db.String(40),
-        nullable=False,
-    )
-    detail = db.Column(
-        db.Text,
-        nullable=False,
-    )
-    destination = db.Column(
-        db.Text,
-        default="",
-    )
+    actor = db.Column(db.String(80), nullable=False)
+    status = db.Column(db.String(40), nullable=False)
+    detail = db.Column(db.Text, nullable=False)
+    destination = db.Column(db.Text, default="")
     created = db.Column(
         db.DateTime,
         default=lambda: datetime.now(timezone.utc),
@@ -173,8 +125,60 @@ class Event(db.Model):
 
 
 with app.app_context():
-    # Cria somente as tabelas da reversa declaradas acima.
     db.create_all()
+
+    # Atualiza as tabelas existentes sem apagar os dados.
+    with db.engine.begin() as connection:
+        user_columns = {
+            column["name"]
+            for column in inspect(connection).get_columns(
+                "reversa_users"
+            )
+        }
+
+        if "role" not in user_columns:
+            connection.execute(
+                db.text(
+                    "ALTER TABLE reversa_users "
+                    "ADD COLUMN role VARCHAR(20) "
+                    "NOT NULL DEFAULT 'funcionario'"
+                )
+            )
+
+        equipment_columns = {
+            column["name"]
+            for column in inspect(connection).get_columns(
+                "reversa_equipment"
+            )
+        }
+
+        if "deleted" not in equipment_columns:
+            connection.execute(
+                db.text(
+                    "ALTER TABLE reversa_equipment "
+                    "ADD COLUMN deleted BOOLEAN "
+                    "NOT NULL DEFAULT FALSE"
+                )
+            )
+
+        # O login ADMIN_USERNAME torna-se administrador
+        # apenas se ainda não houver administrador.
+        connection.execute(
+            db.text(
+                "UPDATE reversa_users "
+                "SET role = 'admin' "
+                "WHERE username = :username "
+                "AND NOT EXISTS ("
+                "SELECT 1 FROM reversa_users "
+                "WHERE role = 'admin'"
+                ")"
+            ),
+            {
+                "username": os.environ.get(
+                    "ADMIN_USERNAME", "admin"
+                ).strip()
+            },
+        )
 
     existing_user = db.session.scalar(
         db.select(User).limit(1)
@@ -182,14 +186,9 @@ with app.app_context():
 
     if not existing_user:
         username = os.environ.get(
-            "ADMIN_USERNAME",
-            "admin",
+            "ADMIN_USERNAME", "admin"
         ).strip()
-
-        password = os.environ.get(
-            "ADMIN_PASSWORD",
-            "",
-        )
+        password = os.environ.get("ADMIN_PASSWORD", "")
 
         if not username or len(username) > 80:
             raise RuntimeError(
@@ -205,21 +204,57 @@ with app.app_context():
             User(
                 username=username,
                 password=generate_password_hash(password),
+                role="admin",
             )
         )
-
         db.session.commit()
 
 
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not session.get("user_id"):
+        if not getattr(g, "user", None):
             return redirect(url_for("login"))
-
         return view(*args, **kwargs)
 
     return wrapped
+
+
+def admin_required(view):
+    @wraps(view)
+    @login_required
+    def wrapped(*args, **kwargs):
+        if g.user.role != "admin":
+            abort(
+                403,
+                "Somente o administrador pode realizar esta ação.",
+            )
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+@app.before_request
+def load_user_and_check_csrf():
+    g.user = None
+
+    if session.get("user_id"):
+        g.user = db.session.get(
+            User, session["user_id"]
+        )
+
+    if request.method == "POST":
+        token = session.get("csrf")
+        submitted_token = request.form.get("csrf", "")
+
+        if not token or not secrets.compare_digest(
+            token, submitted_token
+        ):
+            abort(
+                400,
+                "Formulário expirou. "
+                "Atualize a página e tente novamente.",
+            )
 
 
 @app.context_processor
@@ -230,34 +265,11 @@ def context():
     return {
         "csrf": session["csrf"],
         "statuses": STATUSES,
+        "is_admin": bool(
+            getattr(g, "user", None)
+            and g.user.role == "admin"
+        ),
     }
-
-
-@app.before_request
-def csrf_check():
-    if request.method == "POST":
-        token = session.get("csrf")
-
-        if not token:
-            abort(
-                400,
-                "Atualize a página e tente novamente.",
-            )
-
-        submitted_token = request.form.get(
-            "csrf",
-            "",
-        )
-
-        if not secrets.compare_digest(
-            token,
-            submitted_token,
-        ):
-            abort(
-                400,
-                "Formulário expirou. "
-                "Atualize a página e tente novamente.",
-            )
 
 
 @app.after_request
@@ -265,25 +277,16 @@ def headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Cache-Control"] = "no-store"
-
     return response
 
 
-@app.route(
-    "/login",
-    methods=["GET", "POST"],
-)
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get(
-            "username",
-            "",
+            "username", ""
         ).strip()
-
-        password = request.form.get(
-            "password",
-            "",
-        )
+        password = request.form.get("password", "")
 
         user = db.session.scalar(
             db.select(User).where(
@@ -292,18 +295,14 @@ def login():
         )
 
         if user and check_password_hash(
-            user.password,
-            password,
+            user.password, password
         ):
             session.clear()
-
             session.update(
                 user_id=user.id,
                 username=user.username,
             )
-
             session.permanent = True
-
             return redirect(url_for("index"))
 
         flash("Usuário ou senha incorretos.")
@@ -315,22 +314,16 @@ def login():
 @login_required
 def logout():
     session.clear()
-
     return redirect(url_for("login"))
 
 
 def filtered():
-    stmt = db.select(Equipment)
-
-    q = request.args.get(
-        "q",
-        "",
-    ).strip()
-
-    status = request.args.get(
-        "status",
-        "",
+    stmt = db.select(Equipment).where(
+        Equipment.deleted.is_(False)
     )
+
+    q = request.args.get("q", "").strip()
+    status = request.args.get("status", "")
 
     if q:
         escaped = (
@@ -338,7 +331,6 @@ def filtered():
             .replace("%", "\\%")
             .replace("_", "\\_")
         )
-
         pattern = "%" + escaped + "%"
 
         columns = (
@@ -352,10 +344,7 @@ def filtered():
         stmt = stmt.where(
             or_(
                 *[
-                    column.ilike(
-                        pattern,
-                        escape="\\",
-                    )
+                    column.ilike(pattern, escape="\\")
                     for column in columns
                 ]
             )
@@ -366,9 +355,7 @@ def filtered():
             Equipment.status == status
         )
 
-    return stmt.order_by(
-        Equipment.id.desc()
-    )
+    return stmt.order_by(Equipment.id.desc())
 
 
 @app.get("/")
@@ -379,16 +366,15 @@ def index():
             db.select(
                 Equipment.status,
                 db.func.count(),
-            ).group_by(
-                Equipment.status
             )
+            .where(Equipment.deleted.is_(False))
+            .group_by(Equipment.status)
         ).all()
     )
 
     try:
         page = max(
-            1,
-            int(request.args.get("page", 1)),
+            1, int(request.args.get("page", 1))
         )
     except ValueError:
         page = 1
@@ -407,27 +393,17 @@ def index():
     )
 
 
-@app.route(
-    "/novo",
-    methods=["GET", "POST"],
-)
+@app.route("/novo", methods=["GET", "POST"])
 @login_required
 def new():
     if request.method == "POST":
         fields = [
-            "brand",
-            "model",
-            "serial",
-            "mac",
-            "origin",
-            "notes",
+            "brand", "model", "serial",
+            "mac", "origin", "notes",
         ]
 
         data = {
-            key: request.form.get(
-                key,
-                "",
-            ).strip()
+            key: request.form.get(key, "").strip()
             for key in fields
         }
 
@@ -441,31 +417,25 @@ def new():
                 "Informe marca e modelo "
                 "com até 200 caracteres."
             )
-
         else:
             item = Equipment(**data)
-
             db.session.add(item)
             db.session.flush()
 
             db.session.add(
                 Event(
                     equipment_id=item.id,
-                    actor=session["username"],
+                    actor=g.user.username,
                     status="Recebido",
                     detail="Entrada cadastrada.",
                 )
             )
 
             db.session.commit()
-
             flash("Roteador cadastrado!")
 
             return redirect(
-                url_for(
-                    "detail",
-                    item_id=item.id,
-                )
+                url_for("detail", item_id=item.id)
             )
 
     return render_template("new.html")
@@ -477,51 +447,34 @@ def new():
 )
 @login_required
 def detail(item_id):
-    item = db.get_or_404(
-        Equipment,
-        item_id,
-    )
+    item = db.get_or_404(Equipment, item_id)
+
+    if item.deleted:
+        abort(404)
 
     if request.method == "POST":
-        status = request.form.get(
-            "status",
-            "",
-        )
-
+        status = request.form.get("status", "")
         detail_text = request.form.get(
-            "detail",
-            "",
+            "detail", ""
         ).strip()
-
         destination = request.form.get(
-            "destination",
-            "",
+            "destination", ""
         ).strip()
 
-        submitted_version = request.form.get(
-            "version",
-            "",
-        )
-
-        if submitted_version != str(item.version):
+        if request.form.get("version") != str(item.version):
             flash(
                 "Outro registro alterou este equipamento. "
                 "Confira a situação atual e tente novamente."
             )
-
         elif (
             status not in STATUSES
             or not detail_text
-            or (
-                status == "Saiu"
-                and not destination
-            )
+            or (status == "Saiu" and not destination)
         ):
             flash(
                 "Informe a situação e o resultado/motivo. "
                 "Na saída, informe também o destino."
             )
-
         else:
             item.status = status
             item.version += 1
@@ -529,7 +482,7 @@ def detail(item_id):
             db.session.add(
                 Event(
                     equipment_id=item.id,
-                    actor=session["username"],
+                    actor=g.user.username,
                     status=status,
                     detail=detail_text,
                     destination=destination,
@@ -538,33 +491,22 @@ def detail(item_id):
 
             try:
                 db.session.commit()
-
                 flash("Movimentação registrada!")
-
             except StaleDataError:
                 db.session.rollback()
-
                 flash(
-                    "O equipamento foi alterado "
-                    "por outra pessoa. "
+                    "O equipamento foi alterado por outra pessoa. "
                     "Confira e tente novamente."
                 )
 
         return redirect(
-            url_for(
-                "detail",
-                item_id=item.id,
-            )
+            url_for("detail", item_id=item.id)
         )
 
     events = db.session.scalars(
         db.select(Event)
-        .where(
-            Event.equipment_id == item.id
-        )
-        .order_by(
-            Event.id.desc()
-        )
+        .where(Event.equipment_id == item.id)
+        .order_by(Event.id.desc())
     ).all()
 
     return render_template(
@@ -574,13 +516,121 @@ def detail(item_id):
     )
 
 
+@app.route("/usuarios", methods=["GET", "POST"])
+@admin_required
+def users():
+    if request.method == "POST":
+        username = request.form.get(
+            "username", ""
+        ).strip()
+        password = request.form.get("password", "")
+
+        if (
+            not username
+            or len(username) > 80
+            or len(password) < 8
+        ):
+            flash(
+                "Informe login com até 80 caracteres "
+                "e senha com pelo menos 8 caracteres."
+            )
+
+        elif db.session.scalar(
+            db.select(User).where(
+                User.username == username
+            )
+        ):
+            flash("Esse login já existe. Escolha outro.")
+
+        else:
+            # Novos usuários sempre são funcionários.
+            db.session.add(
+                User(
+                    username=username,
+                    password=generate_password_hash(password),
+                    role="funcionario",
+                )
+            )
+
+            try:
+                db.session.commit()
+                flash(
+                    "Usuário criado! Ele pode cadastrar "
+                    "e registrar testes, mas não excluir."
+                )
+                return redirect(url_for("users"))
+
+            except IntegrityError:
+                db.session.rollback()
+                flash("Esse login já existe. Escolha outro.")
+
+    accounts = db.session.scalars(
+        db.select(User).order_by(User.id)
+    ).all()
+
+    return render_template(
+        "users.html",
+        accounts=accounts,
+    )
+
+
+@app.post("/equipamento/<int:item_id>/excluir")
+@admin_required
+def delete_equipment(item_id):
+    item = db.get_or_404(Equipment, item_id)
+
+    if item.deleted:
+        abort(404)
+
+    if request.form.get("confirm") != "EXCLUIR":
+        flash("Digite EXCLUIR para confirmar.")
+        return redirect(
+            url_for("detail", item_id=item.id)
+        )
+
+    if request.form.get("version") != str(item.version):
+        flash(
+            "O equipamento foi alterado. "
+            "Confira os dados antes de excluir."
+        )
+        return redirect(
+            url_for("detail", item_id=item.id)
+        )
+
+    item.deleted = True
+    item.version += 1
+
+    db.session.add(
+        Event(
+            equipment_id=item.id,
+            actor=g.user.username,
+            status=item.status,
+            detail=(
+                "Cadastro excluído pelo administrador. "
+                "Histórico preservado."
+            ),
+        )
+    )
+
+    try:
+        db.session.commit()
+        flash(
+            "Equipamento excluído da lista. "
+            "O histórico foi preservado."
+        )
+    except StaleDataError:
+        db.session.rollback()
+        flash(
+            "O equipamento foi alterado por outra pessoa. "
+            "Tente novamente."
+        )
+
+    return redirect(url_for("index"))
+
+
 def csv_response(rows, filename):
     output = io.StringIO(newline="")
-
-    writer = csv.writer(
-        output,
-        delimiter=";",
-    )
+    writer = csv.writer(output, delimiter=";")
 
     for row in rows:
         safe_row = []
@@ -610,92 +660,60 @@ def csv_response(rows, filename):
 @app.get("/exportar")
 @login_required
 def export():
-    rows = [
-        [
-            "ID",
-            "Marca",
-            "Modelo",
-            "Serial",
-            "MAC",
-            "Origem",
-            "Situação",
-            "Entrada UTC",
-            "Observações",
-        ]
-    ]
+    rows = [[
+        "ID", "Marca", "Modelo", "Serial", "MAC",
+        "Origem", "Situação", "Entrada UTC", "Observações",
+    ]]
 
     for item in db.session.scalars(filtered()):
-        rows.append(
-            [
-                item.id,
-                item.brand,
-                item.model,
-                item.serial,
-                item.mac,
-                item.origin,
-                item.status,
-                item.created.isoformat(),
-                item.notes,
-            ]
-        )
+        rows.append([
+            item.id,
+            item.brand,
+            item.model,
+            item.serial,
+            item.mac,
+            item.origin,
+            item.status,
+            item.created.isoformat(),
+            item.notes,
+        ])
 
-    return csv_response(
-        rows,
-        "roteadores.csv",
-    )
+    return csv_response(rows, "roteadores.csv")
 
 
 @app.get("/historico.csv")
 @login_required
 def history_export():
-    rows = [
-        [
-            "ID equipamento",
-            "Data UTC",
-            "Responsável",
-            "Situação",
-            "Resultado/motivo",
-            "Destino",
-        ]
-    ]
+    rows = [[
+        "ID equipamento", "Data UTC", "Responsável",
+        "Situação", "Resultado/motivo", "Destino",
+    ]]
 
     events = db.session.scalars(
-        db.select(Event).order_by(
-            Event.id
-        )
+        db.select(Event).order_by(Event.id)
     )
 
     for event in events:
-        rows.append(
-            [
-                event.equipment_id,
-                event.created.isoformat(),
-                event.actor,
-                event.status,
-                event.detail,
-                event.destination,
-            ]
-        )
+        rows.append([
+            event.equipment_id,
+            event.created.isoformat(),
+            event.actor,
+            event.status,
+            event.detail,
+            event.destination,
+        ])
 
-    return csv_response(
-        rows,
-        "historico.csv",
-    )
+    return csv_response(rows, "historico.csv")
 
 
 @app.get("/health")
 def health():
-    db.session.execute(
-        db.text("SELECT 1")
-    )
-
+    db.session.execute(db.text("SELECT 1"))
     return {"status": "ok"}
 
 
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
-        port=int(
-            os.environ.get("PORT", 5000)
-        ),
+        port=int(os.environ.get("PORT", 5000)),
     )
