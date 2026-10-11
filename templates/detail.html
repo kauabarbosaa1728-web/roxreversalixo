@@ -88,4 +88,36 @@
     </div>
   {% endfor %}
 </div>
+
+{% if is_admin %}
+  <div class="panel">
+    <h2>Excluir equipamento</h2>
+
+    <p class="muted">
+      O equipamento será retirado da lista e das contagens.
+      O histórico ficará preservado na exportação.
+    </p>
+
+    <form
+      method="post"
+      action="{{ url_for('delete_equipment', item_id=item.id) }}"
+    >
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="version" value="{{ item.version }}">
+
+      <label>Digite EXCLUIR para confirmar</label>
+      <input
+        name="confirm"
+        required
+        pattern="EXCLUIR"
+        autocomplete="off"
+        placeholder="EXCLUIR"
+      >
+
+      <div class="actions">
+        <button class="danger">Excluir equipamento</button>
+      </div>
+    </form>
+  </div>
+{% endif %}
 {% endblock %}
