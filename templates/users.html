@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<a href="{{ url_for('index') }}">← Voltar</a>
+
+<h1>Usuários</h1>
+
+<div class="panel">
+  <h2>Criar usuário</h2>
+
+  <p class="muted">
+    Os novos usuários podem cadastrar roteadores e registrar testes.
+    Somente o administrador pode criar usuários e excluir equipamentos.
+  </p>
+
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+
+    <div class="grid">
+      <div>
+        <label>Login</label>
+        <input
+          name="username"
+          required
+          maxlength="80"
+          autocomplete="off"
+          placeholder="Ex.: joao"
+          value="{{ request.form.get('username', '') }}"
+        >
+      </div>
+
+      <div>
+        <label>Senha (mínimo de 8 caracteres)</label>
+        <input
+          name="password"
+          type="password"
+          required
+          minlength="8"
+          autocomplete="new-password"
+        >
+      </div>
+    </div>
+
+    <div class="actions">
+      <button>Criar usuário</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Usuários cadastrados</h2>
+
+  <div class="table">
+    <table>
+      <thead>
+        <tr>
+          <th>Login</th>
+          <th>Permissão</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for account in accounts %}
+          <tr>
+            <td>{{ account.username }}</td>
+            <td>
+              {% if account.role == 'admin' %}
+                <span class="badge">Administrador</span>
+              {% else %}
+                Funcionário
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
