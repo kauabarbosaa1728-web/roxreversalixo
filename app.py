@@ -18,6 +18,7 @@ from werkzeug.security import (
     generate_password_hash,
     check_password_hash,
 )
+from pwa import install_pwa
 
 app = Flask(__name__)
 
@@ -128,7 +129,6 @@ class Event(db.Model):
 with app.app_context():
     db.create_all()
 
-    # Atualiza as tabelas existentes sem apagar os dados.
     with db.engine.begin() as connection:
         user_columns = {
             column["name"]
@@ -162,8 +162,6 @@ with app.app_context():
                 )
             )
 
-        # O login ADMIN_USERNAME torna-se administrador
-        # apenas se ainda não houver administrador.
         connection.execute(
             db.text(
                 "UPDATE reversa_users "
@@ -553,7 +551,6 @@ def users():
             flash("Esse login já existe. Escolha outro.")
 
         else:
-            # Novos usuários sempre são funcionários.
             db.session.add(
                 User(
                     username=username,
@@ -720,6 +717,9 @@ def history_export():
 def health():
     db.session.execute(db.text("SELECT 1"))
     return {"status": "ok"}
+
+
+install_pwa(app)
 
 
 if __name__ == "__main__":
