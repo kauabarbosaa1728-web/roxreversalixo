@@ -7,7 +7,8 @@ from functools import wraps
 
 from flask import (
     Flask, abort, flash, redirect, render_template,
-    request, session, url_for, Response, g
+    request, session, url_for, Response, g,
+    send_from_directory,
 )
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_, inspect
@@ -278,6 +279,15 @@ def headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+@app.get("/fundo-login.png")
+def login_background():
+    return send_from_directory(
+        app.root_path,
+        "fundo-login.png.png",
+        mimetype="image/png",
+    )
 
 
 @app.route("/login", methods=["GET", "POST"])
