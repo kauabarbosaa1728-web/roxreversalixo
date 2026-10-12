@@ -50,9 +50,61 @@
   }
 
   @media (max-width: 600px) {
+    body {
+      min-height: 100dvh;
+      background-attachment: scroll;
+      background-position: center top;
+    }
+
     .panel.login {
-      margin: 35px auto;
-      padding: 24px;
+      width: 100%;
+      max-width: 430px;
+      margin: 24px auto;
+      padding: 24px 22px;
+      border-radius: 18px;
+    }
+
+    .login h1 {
+      font-size: 25px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .login .muted {
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+
+    .login label {
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .login input {
+      font-size: 16px;
+      min-height: 50px;
+      padding: 13px 14px;
+      border-radius: 10px;
+    }
+
+    .login .actions {
+      margin: 22px 0 0;
+    }
+
+    .login button {
+      min-height: 50px;
+      border-radius: 10px;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .panel.login {
+      padding: 22px 18px;
+    }
+
+    .login h1 {
+      font-size: 23px;
     }
   }
 </style>
@@ -72,6 +124,8 @@
       id="username"
       name="username"
       autocomplete="username"
+      autocapitalize="none"
+      spellcheck="false"
       placeholder="Digite seu usuário"
       required
     >
