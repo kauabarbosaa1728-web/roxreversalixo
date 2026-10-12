@@ -233,32 +233,157 @@
       font-weight: 600;
     }
 
+    /* Ajustes exclusivos para telas de celular. */
     @media (max-width: 600px) {
+      header {
+        padding: 16px;
+        padding-top: calc(16px + env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+        gap: 14px;
+      }
+
+      .brand {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .brand b {
+        font-size: 18px;
+      }
+
+      .brand .brand-subtitle {
+        font-size: 12px !important;
+        line-height: 1.5;
+        margin-top: 4px;
+      }
+
+      .header-actions {
+        width: 100%;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .header-actions > a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 8px 14px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.09);
+        font-size: 14px;
+      }
+
+      .header-actions > span {
+        margin-left: auto;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        font-size: 13px;
+      }
+
+      .header-actions form button {
+        min-height: 44px;
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+
+      #install-app {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+
       main {
         padding: 0 14px;
+        padding-left: max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
         margin: 20px auto;
       }
 
+      h1 {
+        font-size: 25px;
+        line-height: 1.2;
+      }
+
+      h2 {
+        font-size: 19px;
+      }
+
       .grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      .grid > * {
+        min-width: 0;
       }
 
       .panel {
         padding: 18px;
-      }
-
-      .header-actions {
-        gap: 12px;
+        border-radius: 14px;
       }
 
       .cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .cards .card {
+        padding: 15px;
+        margin-bottom: 0;
+        min-width: 0;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
+
+      .card strong {
+        font-size: 28px;
+      }
+
+      input, select, textarea {
+        font-size: 16px;
+        min-height: 48px;
+        border-radius: 10px;
+      }
+
+      button, .button {
+        min-height: 48px;
+        border-radius: 10px;
+      }
+
+      .filters {
+        gap: 10px;
       }
 
       .filters input,
       .filters select {
         min-width: 0;
         flex-basis: 100%;
+      }
+
+      .filters button {
+        flex: 1;
+      }
+
+      .filters > a {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+      }
+
+      .message {
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 14px;
+      }
+
+      .event {
+        padding: 0 12px;
+        font-size: 14px;
+        overflow-wrap: anywhere;
       }
     }
   </style>
@@ -271,9 +396,9 @@
 
 <body>
   <header>
-    <div>
+    <div class="brand">
       <b>↻ REVERSA</b>
-      <div style="font-size:13px">
+      <div class="brand-subtitle" style="font-size:13px">
         Roteadores e lixo eletrônico · KBSISTEMAS
       </div>
     </div>
