@@ -1,6 +1,148 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+  @media (max-width: 600px) {
+    .dashboard-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .dashboard-actions > .button {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    .dashboard-actions > a:not(.button) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 12px 8px;
+      min-height: 48px;
+      border: 1px solid #dbe4e9;
+      border-radius: 10px;
+      background: white;
+      font-size: 13px;
+    }
+
+    .equipment-table {
+      overflow: visible;
+      margin-top: 20px;
+    }
+
+    .equipment-table table,
+    .equipment-table tbody {
+      display: block;
+      width: 100%;
+    }
+
+    .equipment-table thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .equipment-table tr {
+      display: block;
+      border: 1px solid #dbe4e9;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #f8fafc;
+    }
+
+    .equipment-table td {
+      display: grid;
+      grid-template-columns: 90px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 8px 0;
+      border: 0;
+      font-size: 14px;
+    }
+
+    .equipment-table td::before {
+      content: attr(data-label);
+      color: #5a6b7d;
+      font-size: 12px;
+      font-weight: 600;
+      padding-top: 2px;
+    }
+
+    .equipment-table .cell-value {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .equipment-table .badge {
+      display: inline-block;
+      max-width: 100%;
+      white-space: normal;
+    }
+
+    .equipment-table td.row-action {
+      display: block;
+      padding-top: 12px;
+    }
+
+    .equipment-table td.row-action::before,
+    .equipment-table td.empty-state::before {
+      content: none;
+    }
+
+    .equipment-table .open-equipment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 46px;
+      border-radius: 10px;
+      background: #087d72;
+      color: white;
+      font-weight: 600;
+    }
+
+    .equipment-table td.empty-state {
+      display: block;
+      text-align: center;
+      padding: 14px 0;
+      color: #5a6b7d;
+    }
+
+    .pagination {
+      gap: 10px;
+    }
+
+    .pagination > span {
+      width: 100%;
+      font-size: 13px;
+      color: #5a6b7d;
+    }
+
+    .pagination > a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 16px;
+      border: 1px solid #dbe4e9;
+      border-radius: 10px;
+    }
+  }
+</style>
+
 <h1>Controle de reversa</h1>
 <p class="muted">Da devolução ao teste e ao destino final.</p>
 
@@ -13,7 +155,7 @@
   {% endfor %}
 </div>
 
-<div class="actions">
+<div class="actions dashboard-actions">
   <a class="button" href="{{ url_for('new') }}">
     + Cadastrar roteador
   </a>
@@ -31,11 +173,12 @@
   <form class="filters">
     <input
       name="q"
+      aria-label="Buscar equipamentos"
       placeholder="Buscar marca, modelo, serial, MAC ou origem"
       value="{{ request.args.get('q','') }}"
     >
 
-    <select name="status">
+    <select name="status" aria-label="Filtrar por situação">
       <option value="">Todas as situações</option>
 
       {% for status in statuses %}
@@ -49,49 +192,76 @@
     <a href="{{ url_for('index') }}">Limpar</a>
   </form>
 
-  <div class="table">
+  <div class="table equipment-table">
     <table>
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Marca / modelo</th>
-          <th>Serial</th>
-          <th>MAC</th>
-          <th>Situação</th>
-          <th></th>
+          <th scope="col">ID</th>
+          <th scope="col">Marca / modelo</th>
+          <th scope="col">Serial</th>
+          <th scope="col">MAC</th>
+          <th scope="col">Situação</th>
+          <th scope="col"></th>
         </tr>
       </thead>
 
       <tbody>
         {% for item in records.items %}
           <tr>
-            <td>#{{ item.id }}</td>
-            <td>
-              {{ item.brand }}<br>
-              <b>{{ item.model }}</b>
+            <td data-label="ID">
+              <span class="cell-value">#{{ item.id }}</span>
             </td>
-            <td>{{ item.serial or '—' }}</td>
-            <td>{{ item.mac or '—' }}</td>
-            <td>
-              <span class="badge">{{ item.status }}</span>
+
+            <td data-label="Equipamento">
+              <span class="cell-value">
+                {{ item.brand }}<br>
+                <b>{{ item.model }}</b>
+              </span>
             </td>
-            <td>
-              <a href="{{ url_for('detail', item_id=item.id) }}">
+
+            <td data-label="Serial">
+              <span class="cell-value">
+                {{ item.serial or '—' }}
+              </span>
+            </td>
+
+            <td data-label="MAC">
+              <span class="cell-value">
+                {{ item.mac or '—' }}
+              </span>
+            </td>
+
+            <td data-label="Situação">
+              <span class="cell-value">
+                <span class="badge">{{ item.status }}</span>
+              </span>
+            </td>
+
+            <td class="row-action">
+              <a
+                class="open-equipment"
+                href="{{ url_for('detail', item_id=item.id) }}"
+                aria-label="Abrir equipamento {{ item.id }}"
+              >
                 Abrir
               </a>
             </td>
           </tr>
         {% else %}
           <tr>
-            <td colspan="6">Nenhum roteador encontrado.</td>
+            <td colspan="6" class="empty-state">
+              Nenhum roteador encontrado.
+            </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  <div class="actions">
-    {{ records.total }} equipamento(s) · Página {{ records.page }}
+  <div class="actions pagination">
+    <span>
+      {{ records.total }} equipamento(s) · Página {{ records.page }}
+    </span>
 
     {% if records.has_prev %}
       <a href="{{ url_for('index', page=records.prev_num, q=request.args.get('q',''), status=request.args.get('status','')) }}">
